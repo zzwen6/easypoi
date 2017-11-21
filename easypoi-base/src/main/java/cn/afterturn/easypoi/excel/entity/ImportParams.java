@@ -51,8 +51,28 @@ public class ImportParams extends ExcelBaseParams {
     private int                 startSheetIndex  = 0;
     /**
      * 上传表格需要读取的sheet 数量,默认为1
+     * 
+     * by zzwen6 当设置为-1时 表示读取所有的表，这时应该配合   sheetRange  使用,然后这时sheetRange 表示的是一个【范围】
+     * 如果 sheetNum为一个正值
+     * 	sheetRange非空：那sheetRange表示读取特定的sheet表
+     * 	sheetRange 空,读取sheetNum数量的表
      */
     private int                 sheetNum         = 1;
+    
+    
+    /**
+     * 【范围】
+     * 读取表格特定sheet，数组,
+     * 如{1,3} 表示sheet1~sheet3的表格
+     * {1} ->sheet1
+     * {3,1}->排序{1,3}->表示sheet1~sheet3的表格
+     * 
+     * 【特定表】
+     * {1,3} -> sheet1,sheet3
+     */
+    private int[] 				sheetRange		 = null;
+    
+    
     /**
      * 是否需要保存上传的Excel,默认为false
      */
@@ -236,4 +256,12 @@ public class ImportParams extends ExcelBaseParams {
     public void setNeedCheckOrder(boolean needCheckOrder) {
         this.needCheckOrder = needCheckOrder;
     }
+
+	public int[] getSheetRange() {
+		return sheetRange;
+	}
+
+	public void setSheetRange(int[] sheetRange) {
+		this.sheetRange = sheetRange;
+	}
 }

@@ -253,59 +253,64 @@ public class CellValueService {
      * @return
      */
     private Object getValueByType(String xclass, Object result, ExcelImportEntity entity) {
-        try {
-            //过滤空和空字符串,如果基本类型null会在上层抛出,这里就不处理了
-            if (result == null || StringUtils.isBlank(result.toString())) {
-                return null;
-            }
-            if ("class java.util.Date".equals(xclass)) {
-                return result;
-            }
-            if ("class java.lang.Boolean".equals(xclass) || "boolean".equals(xclass)) {
-                return Boolean.valueOf(String.valueOf(result));
-            }
-            if ("class java.lang.Double".equals(xclass) || "double".equals(xclass)) {
-                return Double.valueOf(String.valueOf(result));
-            }
-            if ("class java.lang.Long".equals(xclass) || "long".equals(xclass)) {
-                try {
-                    return Long.valueOf(String.valueOf(result));
-                } catch (Exception e) {
-                    //格式错误的时候,就用double,然后获取Int值
-                    return Double.valueOf(String.valueOf(result)).longValue();
-                }
-            }
-            if ("class java.lang.Float".equals(xclass) || "float".equals(xclass)) {
-                return Float.valueOf(String.valueOf(result));
-            }
-            if ("class java.lang.Integer".equals(xclass) || "int".equals(xclass)) {
-                try {
-                    return Integer.valueOf(String.valueOf(result));
-                } catch (Exception e) {
-                    //格式错误的时候,就用double,然后获取Int值
-                    return Double.valueOf(String.valueOf(result)).intValue();
-                }
-            }
-            if ("class java.math.BigDecimal".equals(xclass)) {
-                return new BigDecimal(String.valueOf(result));
-            }
-            if ("class java.lang.String".equals(xclass)) {
-                //针对String 类型,但是Excel获取的数据却不是String,比如Double类型,防止科学计数法
-                if (result instanceof String) {
-                    return result;
-                }
-                // double类型防止科学计数法
-                if (result instanceof Double) {
-                    return PoiPublicUtil.doubleToString((Double) result);
-                }
-                return String.valueOf(result);
-            }
-            return result;
-        } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e);
-            throw new ExcelImportException(ExcelImportEnum.GET_VALUE_ERROR);
-        }
-    }
+		try {
+			if (entity.getUseStr()) { // 是否强制读取字符串
+				return result == null?"":result.toString().trim() + "";
+			}
+			
+			if ("class java.util.Date".equals(xclass)) {
+				return result;
+			}
+			if ("class java.lang.Boolean".equals(xclass) || "boolean".equals(xclass)) {
+				return Boolean.valueOf(String.valueOf(result));
+//				return result;
+			}
+			if ("class java.lang.Double".equals(xclass) || "double".equals(xclass)) {
+				if (result == null || String.valueOf(result.toString()).trim() == "") {
+					return null;
+				}
+				return new Double(String.valueOf(result.toString()).trim().replaceAll(",", ""));
+//				return result == null||result.toString().trim()==""?null:new Double(String.valueOf(result.toString()));
+//				return result;
+			}
+			if ("class java.lang.Long".equals(xclass) || "long".equals(xclass)) {
+				return Long.valueOf(String.valueOf(result).replaceAll(",", ""));
+//				return result;
+			}
+			if ("class java.lang.Float".equals(xclass) || "float".equals(xclass)) {
+				return Float.valueOf(String.valueOf(result).replaceAll(",", ""));
+//				return result;
+			}
+			if ("class java.lang.Integer".equals(xclass) || "int".equals(xclass)) {
+				return Integer.valueOf(String.valueOf(result).replaceAll(",", ""));
+//				return result;
+			}
+			if ("class java.math.BigDecimal".equals(xclass)) {
+				
+//				return Double.valueOf(String.valueOf(result));
+				return new BigDecimal(String.valueOf(result).replaceAll(",", ""));
+				
+//				return result;
+			}
+			if ("class java.lang.String".equals(xclass)) {
+				// 针对String 类型,但是Excel获取的数据却不是String,比如Double类型,防止科学计数法
+				if (result instanceof String) {
+					return result;
+				}
+				// double类型防止科学计数法
+				if (result instanceof Double) {
+					return PoiPublicUtil.doubleToString((Double) result);
+				}
+				return String.valueOf(result);
+			}
+			return result;
+		} catch (Exception e) {
+			System.out.println(entity);
+			System.out.println(result + "->" + xclass);
+			LOGGER.error(e.getMessage(), e);
+			throw new ExcelImportException(ExcelImportEnum.GET_VALUE_ERROR);
+		}
+	}
 
     /**
      * 调用处理接口处理值

@@ -150,4 +150,15 @@ public @interface Excel {
      * @return
      */
     public String isImportField() default "false";
+    
+    /**
+	 * 
+	 * useStr:<br>
+	 * 是否强制使用字符串读取单元格
+	 * @CreateTime 2017年12月5日 下午5:05:48
+	 * @return
+	 * @author zzwen6
+	 * @修改记录: <br/>
+	 */
+	public boolean useStr() default true;
 }

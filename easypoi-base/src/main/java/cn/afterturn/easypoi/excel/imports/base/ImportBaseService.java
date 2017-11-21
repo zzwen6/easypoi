@@ -74,6 +74,7 @@ public class ImportBaseService {
         excelEntity.setReplace(excel.replace());
         excelEntity.setDatabaseFormat(excel.databaseFormat());
         excelEntity.setSuffix(excel.suffix());
+        excelEntity.setUseStr(excel.useStr());
         excelEntity.setImportField(Boolean
                 .valueOf(PoiPublicUtil.getValueByTargetId(excel.isImportField(), targetId, "false")));
         getExcelField(targetId, field, excelEntity, excel, pojoClass, excelEntityAnn);
@@ -264,7 +265,7 @@ public class ImportBaseService {
         if (entity.getMethods() != null) {
             setFieldBySomeMethod(entity.getMethods(), object, value);
         } else {
-            entity.getMethod().invoke(object, value);
+            entity.getMethod().invoke(object, new Object[]{value});
         }
     }
 

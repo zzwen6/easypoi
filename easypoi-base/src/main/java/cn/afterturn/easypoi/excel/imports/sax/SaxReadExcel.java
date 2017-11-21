@@ -15,13 +15,22 @@
  */
 package cn.afterturn.easypoi.excel.imports.sax;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.xssf.eventusermodel.XSSFReader;
 import org.apache.poi.xssf.model.SharedStringsTable;
+import org.apache.poi.xssf.model.StylesTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.ContentHandler;
@@ -51,7 +60,8 @@ public class SaxReadExcel {
                                  ISaxRowRead rowRead, IExcelReadRowHanlder hanlder) {
         try {
             OPCPackage opcPackage = OPCPackage.open(inputstream);
-            return readExcel(opcPackage, pojoClass, params, rowRead, hanlder);
+            // return readExcel(opcPackage, pojoClass, params, rowRead, hanlder);
+            return readExcelByThreads(opcPackage, pojoClass, params, rowRead, hanlder);
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
             throw new ExcelImportException(e.getMessage());
@@ -66,8 +76,12 @@ public class SaxReadExcel {
             if (rowRead == null) {
                 rowRead = new SaxRowRead(pojoClass, params, hanlder);
             }
-            XMLReader parser = fetchSheetParser(sst, rowRead);
+			StylesTable stylesTable = xssfReader.getStylesTable();
+
+            XMLReader parser = fetchSheetParser(sst, rowRead,stylesTable);
             Iterator<InputStream> sheets = xssfReader.getSheetsData();
+            
+            
             int sheetIndex = 0;
             while (sheets.hasNext() && sheetIndex < params.getSheetNum()) {
                 sheetIndex++;
@@ -82,13 +96,135 @@ public class SaxReadExcel {
             throw new ExcelImportException("SAX导入数据失败");
         }
     }
+    private <T> List<T> readExcelByThreads(OPCPackage opcPackage, Class<?> pojoClass, ImportParams params,
+            ISaxRowRead rowRead, IExcelReadRowHanlder hanlder) {
+    	int sheetNum = params.getSheetNum(); // 需要读取的sheet数负值为全部，正值才有用
+    	int[] sheetRange = params.getSheetRange(); // 读取sheet的范围
+    	boolean threadFlag = true; // 多线程读取标志
+    	if (sheetNum <= 0 && sheetRange == null) { //想读取全部
+    		threadFlag = false;
+		} 
+    	ISaxRowRead temp = rowRead;
+    	List   result = new ArrayList ();
+    	
+    	if (threadFlag) { //  使用线程
+			// 实际要读取的sheet数
+    		// int num = sheetRange == null || sheetRange.length == 0 ? sheetNum : sheetRange.length;
+			int[] reallySheetRange = sheetRange == null || sheetRange.length == 0 ? generateSheetNo(sheetNum) : sheetRange;
+			try {
+				XSSFReader xssfReader = new XSSFReader(opcPackage);
+				SharedStringsTable sst = xssfReader.getSharedStringsTable();
+				StylesTable stylesTable = xssfReader.getStylesTable();
+				Iterator<InputStream> sheets = xssfReader.getSheetsData();
 
-    private XMLReader fetchSheetParser(SharedStringsTable sst,
-                                       ISaxRowRead rowRead) throws SAXException {
+				// 这个不能共享 rowRead
+//				if (rowRead == null) {
+//					rowRead = new SaxRowRead(pojoClass, params, hanlder);
+//				}
+				int count = reallySheetRange.length;
+				
+				//XMLReader parser = fetchSheetParser(sst, rowRead,stylesTable);
+	            // 线程池
+				ExecutorService service = Executors.newFixedThreadPool(count);
+	            // 计数器
+				CountDownLatch latch = new CountDownLatch(count);
+				for(int i : reallySheetRange){
+					InputStream sht = xssfReader.getSheet("rId" + i);
+					InputSource input = new InputSource(sht);
+					// 这个不能共享 rowRead,每个线程应该有自己的数据
+					if (rowRead == null) {
+						temp = new SaxRowRead(pojoClass, params, hanlder);
+					}
+					XMLReader parser = fetchSheetParser(sst, temp,stylesTable);
+					
+					Future<List> list = service.submit(new ProcessExcelTask(temp,parser,input));
+					System.out.println(list.get());
+					result.addAll(list.get());
+					latch.countDown(); // 计算器减少
+					sht.close();
+				}
+				latch.await(); // 等待所有线程执行完成
+				service.shutdown();
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+	            throw new ExcelImportException("SAX导入数据失败");
+			}
+			
+			
+		}else { // 单个线程跑完数据 
+			try {
+				XSSFReader xssfReader = new XSSFReader(opcPackage);
+				SharedStringsTable sst = xssfReader.getSharedStringsTable();
+				StylesTable stylesTable = xssfReader.getStylesTable();
+				Iterator<InputStream> sheets = xssfReader.getSheetsData();
+
+	            
+	            int sheetIndex = 0;
+	            while (sheets.hasNext()) {
+	            	// 这个不能共享 rowRead
+	            	if (rowRead == null) {
+	            		temp = new SaxRowRead(pojoClass, params, hanlder);
+	            	}
+	            	XMLReader parser = fetchSheetParser(sst, temp,stylesTable);
+	            	
+	                sheetIndex++;
+	                InputStream sheet = sheets.next();
+	                InputSource sheetSource = new InputSource(sheet);
+	                parser.parse(sheetSource);
+	                sheet.close();
+	                result.addAll( temp.getList());
+	            }
+				
+			} catch (Exception e) {
+				LOGGER.error(e.getMessage(), e);
+	            throw new ExcelImportException("SAX导入数据失败");
+			}  
+
+			
+		}
+    	
+    	return result;
+    }
+    /**
+	 * generateSheetNo:<br>
+	 * 生成一个序列
+	 */
+	private int[] generateSheetNo(int sheetNum) {
+		int[] N = new int[sheetNum];
+		for(int i=0;i<sheetNum;i++) N[i] = i+1;
+		return N;
+	}
+
+	private XMLReader fetchSheetParser(SharedStringsTable sst,
+                                       ISaxRowRead rowRead,StylesTable stylesTable) throws SAXException {
         XMLReader parser = XMLReaderFactory.createXMLReader("org.apache.xerces.parsers.SAXParser");
-        ContentHandler handler = new SheetHandler(sst, rowRead);
+		ContentHandler handler = new SheetHandler(sst, rowRead,stylesTable);
         parser.setContentHandler(handler);
         return parser;
     }
 
 }
+
+class ProcessExcelTask implements Callable<List> {
+	ISaxRowRead rowRead;
+	XMLReader parser;
+	InputSource input;
+	public ProcessExcelTask(ISaxRowRead rowRead, XMLReader parser,InputSource input) {
+		this.rowRead = rowRead;
+		this.parser = parser;
+		this.input = input;
+	}
+	/**
+	 * 
+	 */
+	@Override
+	public List call() throws Exception {
+		parser.parse(input);
+		return rowRead.getList();
+	}
+
+	 
+ 
+
+}
+
