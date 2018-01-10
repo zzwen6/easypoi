@@ -66,4 +66,31 @@ public class PdfExportUtil {
             dataSet);
     }
 
+    
+    /**
+     * PDF模板导出，需要自己制作模板文件
+     * exportPdf:<br>
+     * 
+     * @CreateTime 2018年1月10日 下午2:26:36
+     * @param entity 导出参数，主要是模板文件
+     * @param dataSet Map数据集合
+     * @param dto 实体类对象，包含实体属性值
+     * @param outStream 
+     * @return
+     * @author zzwen6
+     * @修改记录: <br/>
+     */
+    public static Document exportPdf(PdfExportParams entity,    Map<String, String>  map,
+    								Object dto, OutputStream outStream){
+    	return new PdfExportServer(outStream, entity).createPdfByTemplate(entity, dto, map  );
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
 }

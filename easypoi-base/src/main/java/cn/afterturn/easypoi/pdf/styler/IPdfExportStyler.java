@@ -15,8 +15,12 @@
  */
 package cn.afterturn.easypoi.pdf.styler;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Font;
+import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfPCell;
 
 import cn.afterturn.easypoi.excel.entity.params.ExcelExportEntity;
@@ -48,4 +52,9 @@ public interface IPdfExportStyler {
      */
     public Font getFont(ExcelExportEntity entity, String text);
 
+    
+    
+    public ArrayList<BaseFont> getBaseFont(ExcelExportEntity entity, String text);
+
+    
 }

@@ -15,14 +15,17 @@
  */
 package cn.afterturn.easypoi.pdf.export;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -34,8 +37,14 @@ import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Element;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.AcroFields;
+import com.itextpdf.text.pdf.AcroFields.Item;
+import com.itextpdf.text.pdf.PdfCopy;
+import com.itextpdf.text.pdf.PdfImportedPage;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.PdfStamper;
 import com.itextpdf.text.pdf.PdfWriter;
 
 import cn.afterturn.easypoi.cache.ImageCache;
@@ -61,13 +70,19 @@ public class PdfExportServer extends ExportCommonService {
 
     private boolean             isListData = false;
 
+    private OutputStream 		outStream;
+    
     public PdfExportServer(OutputStream outStream, PdfExportParams entity) {
         try {
             styler = entity.getStyler() == null ? new PdfExportStylerDefaultImpl()
                 : entity.getStyler();
             document = styler.getDocument();
-            PdfWriter.getInstance(document, outStream);
-            document.open();
+            // 这里修改了下，通过导出模板地址是否为空为判断是不是模板导出
+            if (StringUtils.isBlank(entity.getTemplatePath())) {
+            	PdfWriter.getInstance(document, outStream);
+            	document.open();
+			}
+            this.outStream = outStream;
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
         }
@@ -139,8 +154,91 @@ public class PdfExportServer extends ExportCommonService {
         }
         return document;
     }
-
-    private void createCells(PdfPTable table, Object t, List<ExcelExportEntity> excelParams,
+    public Document createPdfByTemplate(PdfExportParams entity, Object dto, Map<String, String> map) {
+        PdfReader reader;
+        ByteArrayOutputStream bos;
+        PdfStamper stamper;
+         
+        try {
+			reader = new PdfReader(entity.getTemplatePath());
+			bos = new ByteArrayOutputStream();
+			stamper = new PdfStamper(reader, bos);
+			// 表单域
+			AcroFields form = stamper.getAcroFields();
+			setFormValues(form, dto, map);
+			// 导出来的字总是很奇怪 TODO
+			form.setSubstitutionFonts(styler.getBaseFont(null, null));
+			
+			stamper.setFormFlattening(true);
+			stamper.close();
+			
+			 
+			PdfCopy copy = new PdfCopy(document, outStream);
+			int pages = reader.getNumberOfPages();
+			document.open();
+			for(int i=1;i<=pages ;i++){
+				PdfImportedPage importedPage = copy.getImportedPage(new PdfReader(bos.toByteArray()), i);
+				copy.addPage(importedPage);
+			}
+			document.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (DocumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
+        
+		return document;
+	}
+    
+    // 值设置优先级，优先设置Map的值，再设置 obj值, 有冲突将会覆盖
+	private void setFormValues(AcroFields form, Object dto, Map<String, String> map) throws IOException, DocumentException {
+		Map<String, Item> fields = form.getFields();
+		if (map != null && map.size() > 0) {
+			for(Map.Entry<String, Item> entry : fields.entrySet()){
+				if (map.containsKey(entry.getKey())) {
+					form.setField(entry.getKey(), map.get(entry.getKey()));
+				}
+			}
+		} 
+		
+		// 设置Object属性值
+		if (dto != null) {
+			
+			for(Map.Entry<String, Item> entry : fields.entrySet()){
+				 Object value = getValue(dto, entry.getKey());
+				 if (value != null) {
+					form.setField(entry.getKey(), value + "");
+				}
+			}
+		}
+	}
+	private  Object getValue(Object dto, String key) {
+        
+        Object value = null;
+        
+        Method[] methods = dto.getClass().getDeclaredMethods();
+        
+        for(Method method : methods){
+            
+            String methodName = method.getName();
+            if (methodName.startsWith("get") && methodName.substring(3).equalsIgnoreCase(key))
+                try {
+                     
+                    value = method.invoke(dto, new Object[]{});
+                    return value;
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }  
+            
+            
+        }
+        return value;
+    }
+	private void createCells(PdfPTable table, Object t, List<ExcelExportEntity> excelParams,
                              int rowHeight) throws Exception {
         ExcelExportEntity entity;
         int maxHeight = getThisMaxHeight(t, excelParams);
@@ -334,5 +432,8 @@ public class PdfExportServer extends ExportCommonService {
         return new PdfPCell();
 
     }
+
+	 
+	
 
 }

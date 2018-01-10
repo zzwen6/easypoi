@@ -16,6 +16,8 @@
 package cn.afterturn.easypoi.pdf.styler;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,5 +69,26 @@ public class PdfExportStylerDefaultImpl implements IPdfExportStyler {
         Font font = new Font(FontFamily.UNDEFINED);
         return font;
     }
+
+	 
+	@Override
+	public ArrayList<BaseFont> getBaseFont(ExcelExportEntity entity, String text) {
+		ArrayList<BaseFont> baseFonts = new ArrayList<>();
+		//用以支持中文
+        try {
+			BaseFont bfChinese = BaseFont.createFont("STSong-Light", "UniGB-UCS2-H",
+			    BaseFont.NOT_EMBEDDED);
+			baseFonts.add(bfChinese);
+			return baseFonts;
+		} catch (DocumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
 
 }

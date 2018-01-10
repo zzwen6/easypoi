@@ -56,7 +56,11 @@ public class PdfExportParams extends ExcelBaseParams {
      * 是否添加需要需要
      */
     private String           indexName         = "序号";
-
+    /**
+     * 模板文件路径
+     */
+    private String			 templatePath 	   = "";
+    
     private IPdfExportStyler styler;
 
     public PdfExportParams() {
@@ -71,8 +75,9 @@ public class PdfExportParams extends ExcelBaseParams {
         this.title = title;
         this.secondTitle = secondTitle;
     }
+    
 
-    public String getTitle() {
+	public String getTitle() {
         return title;
     }
 
@@ -135,5 +140,13 @@ public class PdfExportParams extends ExcelBaseParams {
     public void setStyler(IPdfExportStyler styler) {
         this.styler = styler;
     }
+
+	public String getTemplatePath() {
+		return templatePath;
+	}
+
+	public void setTemplatePath(String templatePath) {
+		this.templatePath = templatePath;
+	}
 
 }
