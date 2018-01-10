@@ -41,7 +41,7 @@ import cn.afterturn.easypoi.excel.imports.sax.parse.ISaxRowRead;
  */
 public class SheetHandler extends DefaultHandler {
 	//样式表
-	private StylesTable stylesTable;
+	// private StylesTable stylesTable;
     private SharedStringsTable      sst;
     private String                  lastContents;
 
@@ -62,11 +62,9 @@ public class SheetHandler extends DefaultHandler {
     //存储行记录的容器  
     private List<SaxReadCellEntity> rowlist = Lists.newArrayList();
 
-    public SheetHandler(SharedStringsTable sst, ISaxRowRead rowRead,StylesTable stylesTable) {
+    public SheetHandler(SharedStringsTable sst, ISaxRowRead rowRead) {
         this.sst = sst;
         this.read = rowRead;
-
-		this.stylesTable = stylesTable;
     }
 
     @Override
@@ -111,7 +109,7 @@ public class SheetHandler extends DefaultHandler {
 			// 样式
 			String cellStyle = attributes.getValue("s");
 			int styleIndex = Integer.parseInt(cellStyle);
-            XSSFCellStyle style = stylesTable.getStyleAt(styleIndex); 
+             
 			
 			
 			

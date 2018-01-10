@@ -60,14 +60,26 @@ public class SaxReadExcel {
                                  ISaxRowRead rowRead, IExcelReadRowHanlder hanlder) {
         try {
             OPCPackage opcPackage = OPCPackage.open(inputstream);
-            // return readExcel(opcPackage, pojoClass, params, rowRead, hanlder);
-            return readExcelByThreads(opcPackage, pojoClass, params, rowRead, hanlder);
+            return readExcel(opcPackage, pojoClass, params, rowRead, hanlder);
+            
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
             throw new ExcelImportException(e.getMessage());
         }
     }
-
+    /**
+     * 多线程读取sheet内容
+     */
+	public <T> List<T> readExcelByThreads(InputStream inputstream, Class<?> pojoClass, ImportParams params, ISaxRowRead rowRead,
+			IExcelReadRowHanlder hanlder) {
+		try {
+			OPCPackage opcPackage = OPCPackage.open(inputstream);
+			return readExcelByThreads(opcPackage, pojoClass, params, rowRead, hanlder);
+		} catch (Exception e) {
+			LOGGER.error(e.getMessage(), e);
+			throw new ExcelImportException(e.getMessage());
+		}
+	}
     private <T> List<T> readExcel(OPCPackage opcPackage, Class<?> pojoClass, ImportParams params,
                                   ISaxRowRead rowRead, IExcelReadRowHanlder hanlder) {
         try {
@@ -78,7 +90,7 @@ public class SaxReadExcel {
             }
 			StylesTable stylesTable = xssfReader.getStylesTable();
 
-            XMLReader parser = fetchSheetParser(sst, rowRead,stylesTable);
+            XMLReader parser = fetchSheetParser(sst, rowRead);
             Iterator<InputStream> sheets = xssfReader.getSheetsData();
             
             
@@ -135,10 +147,10 @@ public class SaxReadExcel {
 					if (rowRead == null) {
 						temp = new SaxRowRead(pojoClass, params, hanlder);
 					}
-					XMLReader parser = fetchSheetParser(sst, temp,stylesTable);
+					XMLReader parser = fetchSheetParser(sst, temp);
 					
-					Future<List> list = service.submit(new ProcessExcelTask(temp,parser,input));
-					System.out.println(list.get());
+					Future<List<?>> list = service.submit(new ProcessExcelTask(temp,parser,input));
+					
 					result.addAll(list.get());
 					latch.countDown(); // 计算器减少
 					sht.close();
@@ -165,7 +177,7 @@ public class SaxReadExcel {
 	            	if (rowRead == null) {
 	            		temp = new SaxRowRead(pojoClass, params, hanlder);
 	            	}
-	            	XMLReader parser = fetchSheetParser(sst, temp,stylesTable);
+	            	XMLReader parser = fetchSheetParser(sst, temp);
 	            	
 	                sheetIndex++;
 	                InputStream sheet = sheets.next();
@@ -196,16 +208,16 @@ public class SaxReadExcel {
 	}
 
 	private XMLReader fetchSheetParser(SharedStringsTable sst,
-                                       ISaxRowRead rowRead,StylesTable stylesTable) throws SAXException {
+                                       ISaxRowRead rowRead) throws SAXException {
         XMLReader parser = XMLReaderFactory.createXMLReader("org.apache.xerces.parsers.SAXParser");
-		ContentHandler handler = new SheetHandler(sst, rowRead,stylesTable);
+		ContentHandler handler = new SheetHandler(sst, rowRead);
         parser.setContentHandler(handler);
         return parser;
     }
 
 }
 
-class ProcessExcelTask implements Callable<List> {
+class ProcessExcelTask implements Callable<List<?>> {
 	ISaxRowRead rowRead;
 	XMLReader parser;
 	InputSource input;
@@ -218,7 +230,7 @@ class ProcessExcelTask implements Callable<List> {
 	 * 
 	 */
 	@Override
-	public List call() throws Exception {
+	public List<?> call() throws Exception {
 		parser.parse(input);
 		return rowRead.getList();
 	}
