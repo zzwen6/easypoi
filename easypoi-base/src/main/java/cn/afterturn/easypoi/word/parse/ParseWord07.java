@@ -66,6 +66,9 @@ public class ParseWord07 {
         for (int k = 0; k < runIndex.size(); k++) {
             paragraph.getRuns().get(runIndex.get(k)).setText("", 0);
         }
+        if (START_STR.equals(paragraph.getRun(currentRun.getCTR()).getText(0))) {
+            paragraph.getRun(currentRun.getCTR()).setText("", 0);
+        }
         runIndex.clear();
     }
 
