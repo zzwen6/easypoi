@@ -57,7 +57,9 @@ public class ParseWord07 {
                               List<Integer> runIndex, Map<String, Object> map) throws Exception {
         Object obj = PoiPublicUtil.getRealValue(currentText, map);
         if (obj instanceof ImageEntity) {// 如果是图片就设置为图片
+            // 先把原来的占位符设置为 ""
             currentRun.setText("", 0);
+            // 再在当前占位的run添加一个图片
             ExcelMapParse.addAnImage((ImageEntity) obj, currentRun);
         } else {
             currentText = obj.toString();

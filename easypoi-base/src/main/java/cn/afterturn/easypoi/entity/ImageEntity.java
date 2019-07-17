@@ -26,6 +26,9 @@ public class ImageEntity {
 
     public static String URL  = "url";
     public static String Data = "data";
+    public static final String INLINE = "inline";
+    public static final String ANCHOR = "anchor";
+
     /**
      * 图片输入方式
      */
@@ -44,6 +47,16 @@ public class ImageEntity {
     private int          rowspan = 1;
     private int          colspan = 1;
 
+    /** 左偏移 */
+    private int leftOffset = 0;
+    /** 上偏移 */
+    private int topOffset = 0;
+
+    /** 浮动形式false:浮动于文字上方， true 衬于文字下方 */
+    private boolean behind = false;
+
+    /**图片插入形式 inline 行内， anchor 浮动 */
+    private String insertType = INLINE;
 
     public ImageEntity() {
 
@@ -61,6 +74,8 @@ public class ImageEntity {
         this.width = width;
         this.height = height;
     }
+
+
 
     public byte[] getData() {
         return data;
@@ -116,5 +131,37 @@ public class ImageEntity {
 
     public void setColspan(int colspan) {
         this.colspan = colspan;
+    }
+
+    public int getLeftOffset() {
+        return leftOffset;
+    }
+
+    public void setLeftOffset(int leftOffset) {
+        this.leftOffset = leftOffset;
+    }
+
+    public int getTopOffset() {
+        return topOffset;
+    }
+
+    public void setTopOffset(int topOffset) {
+        this.topOffset = topOffset;
+    }
+
+    public boolean isBehind() {
+        return behind;
+    }
+
+    public void setBehind(boolean behind) {
+        this.behind = behind;
+    }
+
+    public String getInsertType() {
+        return insertType;
+    }
+
+    public void setInsertType(String insertType) {
+        this.insertType = insertType;
     }
 }
