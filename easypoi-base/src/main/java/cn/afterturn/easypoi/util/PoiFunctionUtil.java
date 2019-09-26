@@ -16,9 +16,13 @@
 package cn.afterturn.easypoi.util;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 
 import cn.afterturn.easypoi.exception.excel.ExcelExportException;
@@ -98,20 +102,15 @@ public final class PoiFunctionUtil {
      * @return
      */
     public static String formatDate(Object obj, String format) {
-        if (obj == null || obj.toString() == "") {
+        if (obj == null || "".equals(obj.toString())) {
             return "";
         }
-        SimpleDateFormat dateFormat = null;
-        if (DAY_STR.equals(format)) {
-            dateFormat = new SimpleDateFormat(DAY_STR);
-        } else if (TIME_STR.equals(format)) {
-            dateFormat = new SimpleDateFormat(TIME_STR);
-        } else if (TIME__NO_S_STR.equals(format)) {
-            dateFormat = new SimpleDateFormat(TIME__NO_S_STR);
-        } else {
-            dateFormat = new SimpleDateFormat(format);
+        if (obj instanceof Date || obj instanceof Number) {
+            return new SimpleDateFormat(format).format(obj);
+        } else if (obj instanceof TemporalAccessor) {
+            return DateTimeFormatter.ofPattern(format).format((TemporalAccessor) obj);
         }
-        return dateFormat.format(obj);
+        throw new ExcelExportException("暂不支持的时间类型");
     }
 
     /**
@@ -151,9 +150,9 @@ public final class PoiFunctionUtil {
         //要求两个对象当中至少一个对象不是字符串才进行数字类型判断
         if (!(first instanceof String) || !(second instanceof String)) {
             try {
-                double f = Double.parseDouble(first.toString());
-                double s = Double.parseDouble(second.toString());
-                return f == s;
+                BigDecimal f = new BigDecimal(first.toString());
+                BigDecimal s = new BigDecimal(second.toString());
+                return f.compareTo(s) == 0;
             } catch (NumberFormatException e) {
                 //可能存在的错误,忽略继续进行
             }
